@@ -3,20 +3,23 @@ import pandas as pd
 import altair as alt
 from urllib.error import URLError
 
-st.set_page_config(page_title="DataFrame Demo", page_icon="📊")
+st.set_page_config(
+    page_title="DataFrame Demo",
+    page_icon="📊"
+)
 
 st.markdown("# DataFrame Demo")
 st.sidebar.header("DataFrame Demo")
+
 st.write(
-    """This demo shows how to use `st.write` to visualize Pandas DataFrames.
-(Data courtesy of the [UN Data Explorer](http://data.un.org/Explorer.aspx).)"""
+    """This demo shows how to use `st.write` to visualize Pandas DataFrames."""
 )
 
 
 @st.cache_data
 def get_UN_data():
-    AWS_BUCKET_URL = "http://streamlit-demo-data.s3-us-west-2.amazonaws.com"
-    df = pd.read_csv(AWS_BUCKET_URL + "/agri.csv.gz")
+    url = "https://streamlit-demo-data.s3-us-west-2.amazonaws.com/agri.csv.gz"
+    df = pd.read_csv(url)
     return df.set_index("Region")
 
 
@@ -33,36 +36,37 @@ try:
         st.error("Please select at least one country.")
 
     else:
-        data = df.loc[countries]
-        data /= 1000000.0
+        data = df.loc[countries].copy()
+
+        data = data / 1000000.0
 
         st.write(
             "### Gross Agricultural Production ($B)",
             data.sort_index()
         )
 
-        data = data.T.reset_index()
+        chart_data = data.T.reset_index()
 
-        data = pd.melt(
-            data,
-            id_vars=["index"]
-        ).rename(
-            columns={
-                "index": "year",
-                "value": "Gross Agricultural Product ($B)"
-            }
+        chart_data = chart_data.melt(
+            id_vars=["index"],
+            var_name="Region",
+            value_name="Gross Agricultural Product ($B)"
+        )
+
+        chart_data = chart_data.rename(
+            columns={"index": "Year"}
         )
 
         chart = (
-            alt.Chart(data)
+            alt.Chart(chart_data)
             .mark_area(opacity=0.3)
             .encode(
-                x="year:T",
+                x=alt.X("Year:T", title="Year"),
                 y=alt.Y(
                     "Gross Agricultural Product ($B):Q",
-                    stack=None
+                    title="Gross Agricultural Product ($B)"
                 ),
-                color="Region:N",
+                color=alt.Color("Region:N", title="Region")
             )
         )
 
