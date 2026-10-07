@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-
 from urllib.error import URLError
 
 st.set_page_config(page_title="DataFrame Demo", page_icon="📊")
@@ -9,14 +8,15 @@ st.set_page_config(page_title="DataFrame Demo", page_icon="📊")
 st.markdown("# DataFrame Demo")
 st.sidebar.header("DataFrame Demo")
 st.write(
-    """This demo shows how to use `st.write` to visualize Pandas DataFrames."""
+    """This demo shows how to use `st.write` to visualize Pandas DataFrames.
+(Data courtesy of the [UN Data Explorer](http://data.un.org/Explorer.aspx).)"""
 )
 
 
 @st.cache_data
 def get_UN_data():
-    AWS_BUCKET_URL = "http://streamlit-demo-data.s3-us-west-2.amazonaws.com/"
-    df = pd.read_csv(AWS_BUCKET_URL + "agri.csv.gz")
+    AWS_BUCKET_URL = "http://streamlit-demo-data.s3-us-west-2.amazonaws.com"
+    df = pd.read_csv(AWS_BUCKET_URL + "/agri.csv.gz")
     return df.set_index("Region")
 
 
@@ -35,15 +35,34 @@ try:
     else:
         data = df.loc[countries]
         data /= 1000000.0
-        st.write("### Gross Agricultural Production ($B)", data.sort_index())
+
+        st.write(
+            "### Gross Agricultural Production ($B)",
+            data.sort_index()
+        )
+
+        data = data.T.reset_index()
+
+        data = pd.melt(
+            data,
+            id_vars=["index"]
+        ).rename(
+            columns={
+                "index": "year",
+                "value": "Gross Agricultural Product ($B)"
+            }
+        )
 
         chart = (
             alt.Chart(data)
             .mark_area(opacity=0.3)
             .encode(
-                x="Year",
-                y=alt.Y("Gross Agricultural Production ($B):Q"),
-                color="Region",
+                x="year:T",
+                y=alt.Y(
+                    "Gross Agricultural Product ($B):Q",
+                    stack=None
+                ),
+                color="Region:N",
             )
         )
 
@@ -53,6 +72,7 @@ except URLError as e:
     st.error(
         """
         **This demo requires internet access.**
+
         Connection error: %s
         """
         % e.reason
